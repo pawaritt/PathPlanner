@@ -23,7 +23,7 @@ class Simulation(object):
         # self.input_points = []
         self.input_points = [(782, 136), (1356, 228), (979, 507), (690, 425)]
         # self.get_points()
-        print(self.input_points)
+        # print(self.input_points)
         planner = PathPlanner(self.input_points, 120)
         self.moves = planner.calculate_path()
 
@@ -41,7 +41,7 @@ class Simulation(object):
     def display(self):
         self.draw_points()
         self.draw_lines()
-        # self.draw_path()
+        self.draw_path()
         pygame.display.update()
         while True:
             self.clock.tick(60)     

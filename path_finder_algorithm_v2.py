@@ -25,6 +25,8 @@ class Line:
     def calculate_y(self, x):
         return (self.slope * x) + self.bias
     
+    def calculate_x(self, y):
+        return (y - self.bias) / self.slope
     def get_intersection_point(self, line, l1_x_transformation = 0, l2_x_transformation=0):
         x_pos = ((line.bias + (line.slope * l1_x_transformation * -1)) - (self.bias + (self.slope * l2_x_transformation * -1))) / (self.slope - line.slope)
         return Point((x_pos, self.calculate_y(x_pos)))
@@ -99,17 +101,16 @@ class PathPlanner:
         # print(self.z)
         cur_line = Line(min_p, max_p)
         if cur_line.slope < 0:
-            xt = self.x_tra * -1
+            xt = self.y_seed_space * -1
         if ((self.z - 1) > 0) and (self.p == -1):
             self.path.append({
                 'pos': (min_p.x, min_p.y),
                 })
-            differece = get_dist_btw_pos(max_p, min_p)
-            x1 = min_p.x
-            for x in range(math.floor(differece / self.seed_space)):
-                x1 += xt
+            x1 = min_p.y
+            while x1 - (xt * 1.5) < max_p.y:
+                x1 -= xt
                 self.path.append({
-                    'pos': (x1, cur_line.calculate_y(x1))
+                    'pos': (cur_line.calculate_x(x1), x1)
                 })
             self.path.append({
                 'pos': (max_p.x, max_p.y),
@@ -120,13 +121,13 @@ class PathPlanner:
             self.path.append({
                 'pos': (max_p.x, max_p.y),
                 })
-            differece = get_dist_btw_pos(max_p, min_p)
-            x1 = min_p.x
-            for x in range(math.floor(differece / self.seed_space)):
+            x1 = max_p.y
+            while x1 + (xt * 1.5 ) > min_p.y:
                 x1 += xt
                 self.path.append({
-                    'pos': (x1, cur_line.calculate_y(x1))
+                    'pos': (cur_line.calculate_x(x1), x1)
                 })
+                # break
             self.path.append({
                 'pos': (min_p.x, min_p.y),
                 })
@@ -135,17 +136,16 @@ class PathPlanner:
             self.path.append({
                 'pos': (min_p.x, min_p.y),
                 })
-            differece = get_dist_btw_pos(max_p, min_p)
-            x1 = min_p.x
-            print(math.floor(differece / self.seed_space))
-            for x in range(math.floor(differece / self.seed_space)):
-                x1 += xt
+            x1 = min_p.y
+            while x1 - (xt * 1.5) < max_p.y:
+                x1 -= xt
                 self.path.append({
-                    'pos': (x1, cur_line.calculate_y(x1))
+                    'pos': (cur_line.calculate_x(x1), x1)
                 })
             self.path.append({
                 'pos': (max_p.x, max_p.y),
                 })
+                
     def calculate_path(self):
         min_x, max_x = self.sorted_points[0], self.sorted_points[3]
         i, min_index, max_index = 1, 0, 0
