@@ -1,4 +1,4 @@
-from math import comb
+from cmath import inf
 from function import *
 import quadrangle_com
 
@@ -39,28 +39,37 @@ class Line:
     
     def transform(self, dis):
         self.bias = self.bias + (self.slope * dis * -1)
+    
+    def calculate_dist(self):
+        x = abs(self.pos0.x - self.pos1.x)
+        y = abs(self.pos0.y - self.pos1.y)
+        dist_px = abs(math.hypot(x, y))
+        self.dist = dist_px
+        return dist_px
 
 class PathPlanner:
-    def __init__(self, points, object_size:int=15) -> None:
+    def __init__(self, points, object_size:int=100) -> None:
         self.points = [BasePoint(point) for point in points]
+        print([(point.x, point.y) for point in self.points])
         self.sort_points()
-        print([(point.x, point.y) for point in self.sorted_points])
         self.lines = [Line(self.points[0], self.points[3]), Line(self.points[1], self.points[2]), Line(self.points[0], self.points[1]), Line(self.points[2], self.points[3])]
         padding = round(object_size / 4)
-        combo = sum_string([str(point.index) for point in self.sorted_points])
-        print(combo)
-        self.min_combination = quadrangle_com.MINIMUMLINE_SPLIT_POINT[combo]
-        self.max_combination = quadrangle_com.MAXIMUM_SPLIT_POINT[combo]
+        self.combo = sum_string([str(point.index) for point in self.sorted_points])
+        print(self.combo)
+        self.min_combination = quadrangle_com.MINIMUMLINE_SPLIT_POINT[self.combo]
+        self.max_combination = quadrangle_com.MAXIMUM_SPLIT_POINT[self.combo]
         self.base_line = self.lines[0]
-        self.x_split_dist = round(object_size / 3)
-        self.x_padding = abs(padding * (self.base_line.x_bar / math.sqrt(self.base_line.x_bar**2 + self.base_line.y_bar**2)))
-        self.y_padding = abs(padding * (self.base_line.y_bar / math.sqrt(self.base_line.x_bar**2 + self.base_line.y_bar**2)))
-        self.seed_space = 30
+        angle = math.atan(self.base_line.y_bar / self.base_line.x_bar)
+        self.padding = 50
+        self.x_padding = abs(self.padding * math.cos(angle))
+        self.y_padding = abs(self.padding * math.sin(angle))
+        self.seed_space = 40
+        self.split_dist = abs(40 / math.cos(math.radians(math.degrees(angle) + 90)))
         self.path = []
-        self.z = 1
+        self.z = 0
         self.p = 1
-        self.x_seed_space = abs(self.seed_space * (self.base_line.x_bar / math.sqrt(self.base_line.x_bar**2 + self.base_line.y_bar**2)))
-        self.y_seed_space = abs(self.seed_space * (self.base_line.y_bar / math.sqrt(self.base_line.x_bar**2 + self.base_line.y_bar**2)))
+        self.y_seed_space = abs(self.seed_space * math.sin(angle))
+        test_line = Line(Point((0, 0)), Point((self.x_padding, self.y_padding)))
 
     def sort_points(self):
         n = len(self.points)
@@ -100,51 +109,52 @@ class PathPlanner:
     def add_path(self, min_p, max_p):
         # print(self.z)
         cur_line = Line(min_p, max_p)
-        if cur_line.slope < 0:
-            xt = self.y_seed_space * -1
+        xt = self.y_seed_space * -1
+        points = list()
         if ((self.z - 1) > 0) and (self.p == -1):
-            self.path.append({
+            points.append({
                 'pos': (min_p.x, min_p.y),
                 })
             x1 = min_p.y
             while x1 - (xt * 1.5) < max_p.y:
                 x1 -= xt
-                self.path.append({
+                points.append({
                     'pos': (cur_line.calculate_x(x1), x1)
                 })
-            self.path.append({
+            points.append({
                 'pos': (max_p.x, max_p.y),
                 })
             self.p *= -1 
 
         elif ((self.z - 1) > 0) and (self.p == 1):
-            self.path.append({
+            points.append({
                 'pos': (max_p.x, max_p.y),
                 })
             x1 = max_p.y
             while x1 + (xt * 1.5 ) > min_p.y:
                 x1 += xt
-                self.path.append({
+                points.append({
                     'pos': (cur_line.calculate_x(x1), x1)
                 })
                 # break
-            self.path.append({
+            points.append({
                 'pos': (min_p.x, min_p.y),
                 })
             self.p *= -1 
         else:
-            self.path.append({
+            points.append({
                 'pos': (min_p.x, min_p.y),
                 })
             x1 = min_p.y
             while x1 - (xt * 1.5) < max_p.y:
                 x1 -= xt
-                self.path.append({
+                points.append({
                     'pos': (cur_line.calculate_x(x1), x1)
                 })
-            self.path.append({
+            points.append({
                 'pos': (max_p.x, max_p.y),
                 })
+        self.path.append(points)
                 
     def calculate_path(self):
         min_x, max_x = self.sorted_points[0], self.sorted_points[3]
@@ -152,15 +162,16 @@ class PathPlanner:
         min_p = min_x
         max_p = min_x
         x_pos = min_x.x
+        x_dif = self.padding
+        if self.base_line.slope < 0:
+            self.x_padding *= -1
         while True:
-            x_dif = self.x_split_dist * self.z
-            x_pos += self.x_split_dist
-            
             current_min_combination = self.min_combination[min_index]
             min_lim_p = self.get_point_by_index(current_min_combination['point'])
             if (not (self.lines[current_min_combination['line'] - 1] == self.base_line)) and (min_p.x < min_lim_p.x):
                 min_p = self.lines[current_min_combination['line'] - 1].get_intersection_point(self.base_line, x_dif)
                 min_p.y += self.y_padding
+                min_p.x += self.x_padding
             else:
                 min_index += 1
                 continue
@@ -170,47 +181,72 @@ class PathPlanner:
             if not (self.lines[current_max_combination['line'] - 1] == self.base_line) and (max_p.x < max_lim_p.x):
                 max_p = self.lines[current_max_combination['line'] - 1].get_intersection_point(self.base_line, x_dif)
                 max_p.y -= self.y_padding
+                max_p.x -= self.x_padding
             else:
                 max_index += 1
                 continue
             if (max_p.x > max_lim_p.x) or (min_p.x > min_lim_p.x):
-                self.path.pop()
-                if self.base_line.slope > 0:
+                option = 0
+                if self.combo == '0312' and self.base_line.slope < self.lines[1].slope:
+                    option = 2
+                elif self.combo == '0312':
+                    option = 1
+                elif self.combo == '3021' and self.base_line.slope < self.lines[1].slope:
+                    option = 2
+                elif self.combo == '3021':
+                    option = 1
+                elif self.combo == '3012':
+                    option = 1
+                elif self.combo == '0321':
+                    option = 2
+                if option == 1:
+                    print('OPTION 1')
                     cur_line = Line(min_p, max_p)
-                    max_last_p = self.lines[current_min_combination['line'] - 1].get_intersection_point(self.base_line, x_dif - self.x_split_dist)
-                    max_last_p.y += self.y_padding
-                    self.path.extend([{
-                                'pos': (min_last_p.x, min_last_p.y),
-                            }])
-                    while (get_dist_btw_pos(min_p, max_p) > 20) and (min_p.x < max_x.x):
-                        x_dif = self.x_split_dist * self.z
-                        max_p = cur_line.get_intersection_point(self.lines[1], -self.x_split_dist)
-                        min_p = self.lines[current_max_combination['line'] - 1].get_intersection_point(self.base_line, x_dif)
+                    cur_line.calculate_dist()
+                    d = cur_line.dist + 10
+                    new_d = cur_line.dist
+                    while (new_d > 100) and (d > new_d):
+                        d = cur_line.dist
+                        min_p = self.lines[current_max_combination['line'] - 1].get_intersection_point(cur_line)
                         min_p.y -= self.y_padding
-                        cur_line.transform(self.x_split_dist)
-                        self.add_path(min_p, max_p)
-                        self.z += 1
-                        if self.z > 10000:
+                        min_p.x -= self.x_padding
+                        max_p = cur_line.get_intersection_point(self.lines[1], -self.padding)
+                        # max_p.y += self.y_padding
+                        # max_p.x += self.x_padding
+                        cur_line.transform(self.split_dist)
+                        new_d = get_dist_btw_pos(min_p, max_p)
+                        if (d < new_d):
                             break
-                elif self.base_line.slope < 0:
-                    cur_line = Line(min_p, max_p)
-                    min_last_p = self.lines[current_max_combination['line'] - 1].get_intersection_point(self.base_line, x_dif - self.x_split_dist)
-                    min_last_p.y -= self.y_padding
-                    self.path.extend([{
-                                'pos': (min_last_p.x, min_last_p.y),
-                            }])
-                    while (get_dist_btw_pos(min_p, max_p) > 50) and (max_p.x < max_x.x):
-                        x_dif = self.x_split_dist * self.z
-                        max_p = cur_line.get_intersection_point(self.lines[1], -self.x_split_dist)
-                        min_p = self.lines[current_min_combination['line'] - 1].get_intersection_point(self.base_line, x_dif)
-                        min_p.y += self.y_padding
-                        cur_line.transform(self.x_split_dist)
-                        self.add_path(min_p, max_p)
+                        self.add_path(max_p, min_p)
                         self.z += 1
-                        if self.z > 10000:
+                        x_dif += self.split_dist
+                        if self.z > 100:
+                            break
+                elif option == 2:
+                    print('OPTION 2')
+                    cur_line = Line(min_p, max_p)
+                    cur_line.calculate_dist()
+                    d = cur_line.dist + 10
+                    new_d = get_dist_btw_pos(min_p, max_p)
+                    while (new_d > 100) and (d > new_d):
+                        min_p = cur_line.get_intersection_point(self.lines[1], -self.padding)
+                        # min_p.y -= self.y_padding
+                        # min_p.x -= self.x_padding
+                        max_p = self.lines[current_min_combination['line'] - 1].get_intersection_point(cur_line)
+                        max_p.y += self.y_padding
+                        max_p.x += self.x_padding
+                        cur_line.transform(self.split_dist)
+                        new_d = get_dist_btw_pos(min_p, max_p)
+                        if (d < new_d):
+                            break
+                        self.add_path(max_p, min_p)
+                        self.z += 1
+                        x_dif += self.split_dist
+                        if self.z > 100:
                             break
                 break
+            x_dif += self.split_dist
+            self.z += 1
             self.add_path(min_p, max_p)
             cur_line = Line(min_p, max_p)
-            self.z += 1
         return self.path

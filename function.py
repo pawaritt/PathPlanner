@@ -17,11 +17,15 @@ def get_angle_btw_line(pos0, pos1, posref):
     NOTE: using dot product calculation.
     """
     # print(pos0, pos1, posref)
-    ax = posref[0] - pos0[0]
-    ay = posref[1] - pos0[1]
-    bx = posref[0] - pos1[0]
-    by = posref[1] - pos1[1]
-
+    ax = posref.x - pos0.x
+    ay = posref.y - pos0.y
+    bx = posref.x - pos1.x
+    by = posref.y - pos1.y
+    # print(pos0.x, pos0.y)
+    # print(posref.x, posref.y)
+    # print(pos1.x, pos1.y)
+    # print(ax, ay)
+    # print(bx, by)
     # Get dot product of pos0 and pos1.
     _dot = (ax * bx) + (ay * by)
     # Get magnitude of pos0 and pos1.
@@ -31,6 +35,7 @@ def get_angle_btw_line(pos0, pos1, posref):
     _rad = math.acos(_dot / (_magA * _magB))
     # Angle in degrees.
     angle = (_rad * 180) / math.pi
+    # print(angle)
     return angle
 
 # def get_angle_btw_pos(pos0, pos1, pos2):

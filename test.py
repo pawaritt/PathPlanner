@@ -6,27 +6,55 @@ import time
 import os
 import math
 pygame.init()
-
+# print(pygame.version)
 GREEN = (20, 255, 140)
 GREY = (210, 210 ,210)
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 PURPLE = (255, 0, 255)
+
+
+def get_multiple_input(amount=10):
+    screen = pygame.display.set_mode()
+    input_point_sets = list()
+    for x in range(amount):
+        input_points = list()
+        index = 0
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    pos = pygame.mouse.get_pos()
+                    input_points.append(pos)
+                    index += 1
+            for i in range(len(input_points)):
+                if i > 0:
+                    pygame.draw.line(screen, (255, 0, 255), input_points[i - 1], input_points[i], 4)
+                if i == 3:
+                    pygame.draw.line(screen, (255, 0, 255), input_points[i], input_points[0], 4)
+                pygame.draw.circle(screen, (0, 255, 0), input_points[i], radius=10, width=6)
+            pygame.display.flip()
+            if index == 4:
+                break
+        input_point_sets.append(input_points)
+        pygame.display.flip()
+    print(input_point_sets)
+    return input_point_sets
         
 
-
 class Simulation(object):
-    def __init__(self):
+    def __init__(self, input_points=None):
         self.screen = pygame.display.set_mode()
         self.clock = pygame.time.Clock()
         self.player = Car(0, 0)
-        # self.input_points = []
-        self.input_points = [(782, 136), (1356, 228), (979, 507), (690, 425)]
-        # self.get_points()
-        # print(self.input_points)
-        planner = PathPlanner(self.input_points, 120)
-        self.moves = planner.calculate_path()
-
+        if not input_points:
+            self.input_points = []
+            self.get_points()
+        else:
+            self.input_points = input_points
+        planner = PathPlanner(self.input_points)
+        self.lines = planner.calculate_path()
         # try: 
         #     self.moves = planner.calculate_path()
         # except:
@@ -35,19 +63,31 @@ class Simulation(object):
         pygame.display.set_caption("ANONYMOUS CAR ALGO TEST 1")
 
     def draw_points(self):
-        for move in self.moves:
-            pygame.draw.circle(self.screen, (0, 255, 0), move['pos'], radius=4, width=2)
+        for line in self.lines:
+            for point in line:
+                pygame.draw.circle(self.screen, (0, 255, 0), point['pos'], radius=4, width=2)
 
-    def display(self):
+    def display(self, stop=False):
         self.draw_points()
         self.draw_lines()
         self.draw_path()
         pygame.display.update()
+        x = 0
+        if stop:
+            i = 0
+        else:
+            i = 1
         while True:
-            self.clock.tick(60)     
+            x += 1
+            self.clock.tick(60)  
             event = pygame.event.poll()
             if event.type == pygame.QUIT:
                 running = 0 
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                i *= -1
+                print(i)
+            if x == 100 and i == 1:
+                break
 
     def run(self):
         running = 1
@@ -99,17 +139,19 @@ class Simulation(object):
     def draw_path(self, delay:int=None):
         last_point = None
         if delay:
-            for move in self.moves:
-                if last_point:
-                    pygame.draw.line(self.screen, (0, 0, 255), last_point, move['pos'], 3)
-                last_point = move['pos']
-                pygame.display.update()
-                time.sleep(delay)
+            for line in self.lines:
+                for point in line:
+                    if last_point:
+                        pygame.draw.line(self.screen, (0, 0, 255), last_point, point['pos'], 3)
+                    last_point = point['pos']
+                    pygame.display.update()
+                    time.sleep(delay)
         else:
-            for move in self.moves:
-                if last_point:
-                    pygame.draw.line(self.screen, (0, 0, 255), last_point, move['pos'], 3)
-                last_point = move['pos']
+            for line in self.lines:
+                for point in line:
+                    if last_point:
+                        pygame.draw.line(self.screen, (0, 0, 255), last_point, point['pos'], 3)
+                    last_point = point['pos']
 
     def get_points(self):
         index = 0
@@ -127,6 +169,16 @@ class Simulation(object):
                 break
 
 if __name__ == "__main__":
-    s = Simulation()
-    s.display()
+    # for points in get_multiple_input(7):
+    #     s = Simulation(points)
+    #     s.display(stop=False)
+    test_points = [[(448, 118), (1129, 102), (1325, 402), (882, 386)], [(234, 333), (317, 140), (1054, 142), (914, 644)], [(534, 290), (947, 254), (1364, 559), (229, 604)], [(177, 193), (1289, 208), (1030, 373), (487, 565)], [(427, 205), (1114, 139), (1274, 464), (539, 670)], [(580, 231), (1252, 179), (1256, 536), (646, 379)], [(313, 327), (1133, 202), (1232, 752), (781, 556)]]
+    for points in test_points:
+        s = Simulation(points)
+        s.display(stop=False)
+    # test_point = [(534, 290), (947, 254), (1364, 559), (229, 604)]
+    # s = Simulation(test_point)
+    # s.display(True)
+    # s = Simulation()
+    # s.display(True)
     # s.run()
